@@ -1,0 +1,270 @@
+-- =====================================================
+-- PIMA INDIANS DIABETES ANALYSIS - SQL QUERIES
+-- =====================================================
+-- Author: [Your Name]
+-- Date: October 2025
+-- Database: SQL Server
+-- =====================================================
+
+-- =====================================================
+-- SECTION 1: DATA EXPLORATION & BASIC STATISTICS
+-- =====================================================
+
+-- Query 1.1: View sample data
+SELECT TOP 10 * 
+FROM diabetes;
+
+-- Query 1.2: Count total records
+SELECT COUNT(*) as total_patients
+FROM diabetes;
+
+-- Query 1.3: Diabetes outcome distribution
+SELECT 
+    Outcome,
+    COUNT(*) as patient_count,
+    ROUND(100.0 * COUNT(*) / (SELECT COUNT(*) FROM diabetes), 1) as percentage
+FROM diabetes
+GROUP BY Outcome;
+-- Result: 500 non-diabetic (65.1%), 268 diabetic (34.9%)
+
+-- Query 1.4: Average health metrics by diabetes status
+SELECT 
+    Outcome,
+    COUNT(*) as patient_count,
+    ROUND(AVG(Age), 1) as avg_age,
+    ROUND(AVG(BMI), 1) as avg_bmi,
+    ROUND(AVG(Glucose), 1) as avg_glucose,
+    ROUND(AVG(BloodPressure), 1) as avg_blood_pressure
+FROM diabetes
+GROUP BY Outcome;
+-- Result: Diabetics have higher age (37 vs 31), BMI (35.1 vs 30.3), 
+-- glucose (141 vs 109), blood pressure (70 vs 68)
+
+-- Query 1.5: Additional metrics comparison
+SELECT 
+    Outcome,
+    ROUND(AVG(Insulin), 1) as avg_insulin,
+    ROUND(AVG(Pregnancies), 1) as avg_pregnancies,
+    ROUND(AVG(SkinThickness), 1) as avg_skin_thickness
+FROM diabetes
+GROUP BY Outcome;
+-- Result: Diabetics have higher insulin (100 vs 68), more pregnancies (4 vs 3),
+-- thicker skin (22 vs 19)
+
+
+-- =====================================================
+-- SECTION 2: AGE ANALYSIS
+-- =====================================================
+
+-- Query 2.1: Diabetes rates by age group
+SELECT 
+    CASE 
+        WHEN Age < 30 THEN 'Under 30'
+        WHEN Age BETWEEN 30 AND 45 THEN '30-45'
+        WHEN Age BETWEEN 46 AND 60 THEN '46-60'
+        ELSE 'Over 60'
+    END as age_group,
+    COUNT(*) as total_patients,
+    SUM(CAST(Outcome AS INT)) as diabetes_count,
+    ROUND(100.0 * SUM(CAST(Outcome AS INT)) / COUNT(*), 1) as diabetes_percentage
+FROM diabetes
+GROUP BY CASE 
+        WHEN Age < 30 THEN 'Under 30'
+        WHEN Age BETWEEN 30 AND 45 THEN '30-45'
+        WHEN Age BETWEEN 46 AND 60 THEN '46-60'
+        ELSE 'Over 60'
+    END
+ORDER BY age_group;
+-- Result: Risk increases dramatically at age 30 (21% to 50%)
+-- Highest risk: 46-60 age group at 56%
+
+
+-- =====================================================
+-- SECTION 3: BMI (BODY MASS INDEX) ANALYSIS
+-- =====================================================
+
+-- Query 3.1: Diabetes rates by BMI category
+SELECT 
+    CASE 
+        WHEN BMI < 18.5 THEN 'Underweight'
+        WHEN BMI BETWEEN 18.5 AND 24.9 THEN 'Normal'
+        WHEN BMI BETWEEN 25 AND 29.9 THEN 'Overweight'
+        ELSE 'Obese'
+    END as bmi_category,
+    COUNT(*) as total_patients,
+    SUM(CAST(Outcome AS INT)) as diabetes_count,
+    ROUND(100.0 * SUM(CAST(Outcome AS INT)) / COUNT(*), 1) as diabetes_percentage
+FROM diabetes
+WHERE BMI > 0
+GROUP BY CASE 
+        WHEN BMI < 18.5 THEN 'Underweight'
+        WHEN BMI BETWEEN 18.5 AND 24.9 THEN 'Normal'
+        WHEN BMI BETWEEN 25 AND 29.9 THEN 'Overweight'
+        ELSE 'Obese'
+    END
+ORDER BY bmi_category;
+-- Result: Obese = 46.4% diabetes rate (6.7x higher than normal weight)
+-- Strongest modifiable risk factor
+
+
+-- =====================================================
+-- SECTION 4: GLUCOSE LEVEL ANALYSIS
+-- =====================================================
+
+-- Query 4.1: Diabetes rates by clinical glucose categories
+SELECT 
+    CASE 
+        WHEN Glucose < 100 THEN 'Normal (<100)'
+        WHEN Glucose BETWEEN 100 AND 125 THEN 'Pre-diabetic (100-125)'
+        WHEN Glucose >= 126 THEN 'Diabetic Range (126+)'
+    END as glucose_category,
+    COUNT(*) as total_patients,
+    SUM(CAST(Outcome AS INT)) as diabetes_count,
+    ROUND(100.0 * SUM(CAST(Outcome AS INT)) / COUNT(*), 1) as diabetes_percentage
+FROM diabetes
+WHERE Glucose > 0
+GROUP BY CASE 
+        WHEN Glucose < 100 THEN 'Normal (<100)'
+        WHEN Glucose BETWEEN 100 AND 125 THEN 'Pre-diabetic (100-125)'
+        WHEN Glucose >= 126 THEN 'Diabetic Range (126+)'
+    END;
+-- Result: Clear progression - Normal: 7.3%, Pre-diabetic: 27.7%, Diabetic: 59.3%
+
+-- Query 4.2: Top vs bottom quartile glucose comparison
+-- Top 25% highest glucose
+SELECT 
+    'Top 25% Glucose' as group_name,
+    COUNT(*) as total_patients,
+    SUM(CAST(Outcome AS INT)) as diabetes_count,
+    ROUND(100.0 * SUM(CAST(Outcome AS INT)) / COUNT(*), 1) as diabetes_percentage
+FROM (
+    SELECT TOP 25 PERCENT *
+    FROM diabetes
+    WHERE Glucose > 0
+    ORDER BY Glucose DESC
+) as top_quarter
+
+UNION ALL
+
+-- Bottom 25% lowest glucose
+SELECT 
+    'Bottom 25% Glucose' as group_name,
+    COUNT(*) as total_patients,
+    SUM(CAST(Outcome AS INT)) as diabetes_count,
+    ROUND(100.0 * SUM(CAST(Outcome AS INT)) / COUNT(*), 1) as diabetes_percentage
+FROM (
+    SELECT TOP 25 PERCENT *
+    FROM diabetes
+    WHERE Glucose > 0
+    ORDER BY Glucose ASC
+) as bottom_quarter;
+-- Result: Top 25% = 68.6% diabetes, Bottom 25% = 7.3% diabetes
+-- 9.4x higher risk in top quartile
+
+
+-- =====================================================
+-- SECTION 5: MULTIPLE RISK FACTORS ANALYSIS
+-- =====================================================
+
+-- Query 5.1: Combined obesity and age risk
+SELECT 
+    CASE 
+        WHEN BMI >= 30 AND Age > 40 THEN 'Obese AND Over 40'
+        WHEN BMI >= 30 AND Age <= 40 THEN 'Obese BUT Under 40'
+        WHEN BMI < 30 AND Age > 40 THEN 'Not Obese BUT Over 40'
+        ELSE 'Not Obese AND Under 40'
+    END as risk_category,
+    COUNT(*) as total_patients,
+    SUM(CAST(Outcome AS INT)) as diabetes_count,
+    ROUND(100.0 * SUM(CAST(Outcome AS INT)) / COUNT(*), 1) as diabetes_percentage
+FROM diabetes
+WHERE BMI > 0
+GROUP BY CASE 
+        WHEN BMI >= 30 AND Age > 40 THEN 'Obese AND Over 40'
+        WHEN BMI >= 30 AND Age <= 40 THEN 'Obese BUT Under 40'
+        WHEN BMI < 30 AND Age > 40 THEN 'Not Obese BUT Over 40'
+        ELSE 'Not Obese AND Under 40'
+    END
+ORDER BY diabetes_percentage DESC;
+-- Result: Both factors = 60.2% diabetes (5x higher than neither factor)
+
+-- Query 5.2: Risk factor accumulation (0-3 factors)
+SELECT 
+    CASE 
+        WHEN Age >= 40 AND BMI >= 30 AND Glucose >= 126 THEN '3 Risk Factors'
+        WHEN (Age >= 40 AND BMI >= 30) OR (Age >= 40 AND Glucose >= 126) OR (BMI >= 30 AND Glucose >= 126) THEN '2 Risk Factors'
+        WHEN Age >= 40 OR BMI >= 30 OR Glucose >= 126 THEN '1 Risk Factor'
+        ELSE '0 Risk Factors'
+    END as risk_level,
+    COUNT(*) as total_patients,
+    SUM(CAST(Outcome AS INT)) as diabetes_count,
+    ROUND(100.0 * SUM(CAST(Outcome AS INT)) / COUNT(*), 1) as diabetes_percentage
+FROM diabetes
+WHERE Glucose > 0 AND BMI > 0
+GROUP BY CASE 
+        WHEN Age >= 40 AND BMI >= 30 AND Glucose >= 126 THEN '3 Risk Factors'
+        WHEN (Age >= 40 AND BMI >= 30) OR (Age >= 40 AND Glucose >= 126) OR (BMI >= 30 AND Glucose >= 126) THEN '2 Risk Factors'
+        WHEN Age >= 40 OR BMI >= 30 OR Glucose >= 126 THEN '1 Risk Factor'
+        ELSE '0 Risk Factors'
+    END
+ORDER BY diabetes_percentage DESC;
+-- Result: 3 factors = 78.8%, 2 factors = 53.1%, 1 factor = 24.9%, 0 factors = 7%
+-- 11x higher risk with all 3 factors vs none
+
+-- Query 5.3: Above-average glucose AND BMI (subquery example)
+SELECT 
+    COUNT(*) as high_risk_patients,
+    SUM(CAST(Outcome AS INT)) as diabetes_count,
+    ROUND(100.0 * SUM(CAST(Outcome AS INT)) / COUNT(*), 1) as diabetes_percentage
+FROM diabetes
+WHERE Glucose > (SELECT AVG(Glucose) FROM diabetes WHERE Glucose > 0)
+  AND BMI > (SELECT AVG(BMI) FROM diabetes WHERE BMI > 0);
+-- Result: 65.6% diabetes rate in above-average group
+
+
+-- =====================================================
+-- SECTION 6: PREGNANCY & AGE INTERACTION
+-- =====================================================
+
+-- Query 6.1: Pregnancy count and age interaction
+SELECT 
+    CASE 
+        WHEN Pregnancies >= 5 AND Age >= 35 THEN 'High Pregnancies + Older'
+        WHEN Pregnancies >= 5 AND Age < 35 THEN 'High Pregnancies + Younger'
+        WHEN Pregnancies < 5 AND Age >= 35 THEN 'Low Pregnancies + Older'
+        ELSE 'Low Pregnancies + Younger'
+    END as pregnancy_age_group,
+    COUNT(*) as total_patients,
+    SUM(CAST(Outcome AS INT)) as diabetes_count,
+    ROUND(100.0 * SUM(CAST(Outcome AS INT)) / COUNT(*), 1) as diabetes_percentage
+FROM diabetes
+GROUP BY CASE 
+        WHEN Pregnancies >= 5 AND Age >= 35 THEN 'High Pregnancies + Older'
+        WHEN Pregnancies >= 5 AND Age < 35 THEN 'High Pregnancies + Younger'
+        WHEN Pregnancies < 5 AND Age >= 35 THEN 'Low Pregnancies + Older'
+        ELSE 'Low Pregnancies + Younger'
+    END
+ORDER BY diabetes_percentage DESC;
+-- Result: Age is more influential than pregnancy count
+-- Older women ~50% risk regardless of pregnancies
+
+
+-- =====================================================
+-- SECTION 7: DATA QUALITY ASSESSMENT
+-- =====================================================
+
+-- Query 7.1: Check for impossible zero values (missing data)
+SELECT 
+    COUNT(CASE WHEN Glucose = 0 THEN 1 END) as zero_glucose,
+    COUNT(CASE WHEN BMI = 0 THEN 1 END) as zero_bmi,
+    COUNT(CASE WHEN BloodPressure = 0 THEN 1 END) as zero_blood_pressure,
+    COUNT(CASE WHEN SkinThickness = 0 THEN 1 END) as zero_skin_thickness,
+    COUNT(CASE WHEN Insulin = 0 THEN 1 END) as zero_insulin
+FROM diabetes;
+-- Result: Significant missing data in Insulin (49%) and SkinThickness (30%)
+-- These zeros represent missing values, not actual measurements
+
+
+-- =====================================================
+-- END OF QUERIES
+-- =====================================================
