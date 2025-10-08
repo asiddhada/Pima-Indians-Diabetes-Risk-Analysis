@@ -121,8 +121,8 @@ BMI: 11 records (1.4%)
 Glucose: 5 records (0.7%)
 
 All analyses exclude zero values in critical variables to ensure accuracy.
-🎓 What I Learned
 
+🎓 What I Learned
 How to translate business questions into SQL queries
 Identifying and handling data quality issues
 Creating categorical variables from continuous data
