@@ -81,48 +81,8 @@ Start with README.md (you're here!) for high-level insights
 Review queries.sql to see the SQL code and methodology
 Read findings.md for detailed analysis, interpretations, and implications
 
-📈 Sample Queries
-Risk Factor Accumulation Analysis:
-sqlSELECT 
-    CASE 
-        WHEN Age >= 40 AND BMI >= 30 AND Glucose >= 126 THEN '3 Risk Factors'
-        WHEN (Age >= 40 AND BMI >= 30) OR (Age >= 40 AND Glucose >= 126) 
-             OR (BMI >= 30 AND Glucose >= 126) THEN '2 Risk Factors'
-        WHEN Age >= 40 OR BMI >= 30 OR Glucose >= 126 THEN '1 Risk Factor'
-        ELSE '0 Risk Factors'
-    END as risk_level,
-    COUNT(*) as total_patients,
-    SUM(CAST(Outcome AS INT)) as diabetes_count,
-    ROUND(100.0 * SUM(CAST(Outcome AS INT)) / COUNT(*), 1) as diabetes_percentage
-FROM diabetes
-WHERE Glucose > 0 AND BMI > 0
-GROUP BY [CASE statement]
-ORDER BY diabetes_percentage DESC;
-Percentile Comparison:
-sql-- Top 25% vs Bottom 25% glucose levels
-SELECT 'Top 25% Glucose' as group_name,
-    COUNT(*) as total_patients,
-    ROUND(100.0 * SUM(CAST(Outcome AS INT)) / COUNT(*), 1) as diabetes_percentage
-FROM (SELECT TOP 25 PERCENT * FROM diabetes 
-      WHERE Glucose > 0 ORDER BY Glucose DESC) as top_quarter
-UNION ALL
-SELECT 'Bottom 25% Glucose' as group_name,
-    COUNT(*) as total_patients,
-    ROUND(100.0 * SUM(CAST(Outcome AS INT)) / COUNT(*), 1) as diabetes_percentage
-FROM (SELECT TOP 25 PERCENT * FROM diabetes 
-      WHERE Glucose > 0 ORDER BY Glucose ASC) as bottom_quarter;
-⚠️ Data Quality Notes
-The dataset contains impossible zero values representing missing data:
 
-Insulin: 374 records (49%) - limits reliability of insulin analysis
-Skin Thickness: 227 records (30%) - affects body fat estimates
-Blood Pressure: 35 records (4.6%)
-BMI: 11 records (1.4%)
-Glucose: 5 records (0.7%)
-
-All analyses exclude zero values in critical variables to ensure accuracy.
-
-🎓 What I Learned
+🎓 What I Learned:
 How to translate business questions into SQL queries
 Identifying and handling data quality issues
 Creating categorical variables from continuous data
